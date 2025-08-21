@@ -106,11 +106,6 @@ Quando as configurações do Firebase não estão disponíveis, o sistema automa
 - **Senha**: `admin123`
 - **Perfil**: Administrador com acesso total
 
-#### 👨‍💼 Administrador 2 (Pietro)
-- **Email**: `pietro.medeiros@webcontinental.com.br`
-- **Senha**: `123456`
-- **Perfil**: Administrador principal
-
 ### 🔥 Modo Firebase (Produção)
 
 Em produção, o sistema utiliza Firebase Auth para autenticação real com:
