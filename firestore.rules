@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função para verificar se é admin principal
+    function isMainAdmin() {
+      return request.auth != null && request.auth.token.email == 'pietro.medeiros@webcontinental.com.br';
+    }
+    
+    // Função para verificar se é admin (com fallback para admin principal)
+    function isAdmin() {
+      return isMainAdmin() || 
+        (request.auth != null && 
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    // Regras para usuários
+    match /users/{userId} {
+      // Usuários autenticados podem ler/escrever seus próprios dados
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admin principal sempre pode acessar (sem verificação de documento)
+      allow read, write: if isMainAdmin();
+      
+      // Outros admins podem ler/escrever todos os dados
+      allow read, write: if isAdmin();
+    }
+    
+    // Regras para treinamentos
+    match /trainings/{trainingId} {
+      // Usuários autenticados podem ler treinamentos
+      allow read: if request.auth != null;
+      
+      // Admins podem criar, atualizar ou deletar treinamentos
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Regras para avaliações
+    match /ratings/{ratingId} {
+      // Usuários autenticados podem ler avaliações
+      allow read: if request.auth != null;
+      
+      // Usuários podem criar suas próprias avaliações
+      allow create: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Usuários podem atualizar apenas suas próprias avaliações
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Admins podem deletar qualquer avaliação
+      allow delete: if isAdmin();
+    }
+  }
+}

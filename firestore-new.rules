@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regras para usuários - mais flexíveis para novos usuários
+    match /users/{userId} {
+      // Usuários autenticados podem ler/escrever seus próprios dados
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admins podem ler/escrever todos os dados (só funciona se o documento já existir)
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Regras para treinamentos
+    match /trainings/{trainingId} {
+      // Usuários autenticados podem ler treinamentos
+      allow read: if request.auth != null;
+      
+      // Apenas admins podem criar, atualizar ou deletar treinamentos
+      allow create, update, delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Regras para avaliações
+    match /ratings/{ratingId} {
+      // Usuários autenticados podem ler avaliações
+      allow read: if request.auth != null;
+      
+      // Usuários podem criar suas próprias avaliações
+      allow create: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Usuários podem atualizar apenas suas próprias avaliações
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // Admins podem deletar qualquer avaliação
+      allow delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
