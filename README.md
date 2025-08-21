@@ -1,4 +1,4 @@
-# 🎓 T&D Webcontinental - Plataforma de Treinamento e Desenvolvimento
+# 🎓 T&D Plataform - Plataforma de Treinamento e Desenvolvimento
 
 Uma plataforma moderna e completa para gerenciamento de treinamentos corporativos, desenvolvida com **Next.js 15**, **TypeScript**, **Tailwind CSS** e **Firebase**.
 
