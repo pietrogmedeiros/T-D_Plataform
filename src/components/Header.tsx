@@ -51,13 +51,6 @@ export function Header() {
                 Dashboard
               </Link>
               
-              <Link 
-                href="/test-firebase" 
-                className="text-blue-600 hover:text-blue-800 transition-colors text-sm"
-              >
-                🔥 Test Firebase
-              </Link>
-              
               {user.role === 'admin' && (
                 <>
                   <Link 

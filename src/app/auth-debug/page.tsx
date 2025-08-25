@@ -7,22 +7,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 
 export default function AuthDebugPage() {
-  const { user, firebaseUser, loading, isTestMode } = useAuth();
+  const { user, loading, isTestMode } = useAuth();
   const router = useRouter();
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   useEffect(() => {
     const log = (message: string) => {
-      console.log(message);
-      setDebugInfo(prev => [...prev.slice(-20), `${new Date().toLocaleTimeString()}: ${message}`]);
+      setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
     };
 
-    log('🔍 Debug Auth inicializado');
+    log(`User: ${user ? `${user.displayName} (${user.role})` : 'null'}`);
     log(`Loading: ${loading}`);
-    log(`IsTestMode: ${isTestMode}`);
-    log(`User: ${user ? JSON.stringify(user) : 'null'}`);
-    log(`FirebaseUser: ${firebaseUser ? 'logado (modo teste)' : 'null'}`);
-  }, [user, firebaseUser, loading, isTestMode]);
+    log(`Test Mode: ${isTestMode}`);
+  }, [user, loading, isTestMode]);
 
   const goToDashboard = () => {
     router.push('/dashboard');
@@ -50,7 +47,7 @@ export default function AuthDebugPage() {
                   <li>Loading: <span className={loading ? 'text-yellow-600' : 'text-green-600'}>{loading ? 'true' : 'false'}</span></li>
                   <li>Test Mode: <span className={isTestMode ? 'text-blue-600' : 'text-gray-600'}>{isTestMode ? 'true' : 'false'}</span></li>
                   <li>User: <span className={user ? 'text-green-600' : 'text-red-600'}>{user ? 'Logado' : 'Não logado'}</span></li>
-                  <li>Firebase User: <span className={firebaseUser ? 'text-green-600' : 'text-red-600'}>{firebaseUser ? 'Conectado' : 'Desconectado'}</span></li>
+                  <li>Database: <span className="text-green-600">PostgreSQL</span></li>
                 </ul>
               </div>
               

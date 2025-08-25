@@ -1,0 +1,18 @@
+/* Estilo para ocultar erros de extensão no DevTools */
+.console-error-level .console-message-text:has-text("chrome-extension://"),
+.console-error-level .console-message-text:has-text("ERR_FILE_NOT_FOUND"),
+.console-error-level .console-message-text:has-text("Failed to load resource"),
+.console-warning-level .console-message-text:has-text("The resource"),
+.console-warning-level .console-message-text:has-text("was preloaded using link preload") {
+  display: none !important;
+}
+
+/* Ocultar logs que contenham extensões */
+.console-group .console-message:has([data-object-preview-type*="chrome-extension"]) {
+  display: none !important;
+}
+
+/* Filtrar stack traces de extensões */
+.console-message .console-message-stack-trace-wrapper:has-text("chrome-extension://") {
+  display: none !important;
+}

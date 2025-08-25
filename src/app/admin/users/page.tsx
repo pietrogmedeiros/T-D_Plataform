@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -17,7 +15,7 @@ import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
 
 export default function AdminUsersPage() {
-  const { signUp, isTestMode } = useAuth();
+  const { } = useAuth(); // Removendo signUp e isTestMode não utilizados
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,48 +33,41 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      if (!db) {
-        // Modo de teste - dados mock
-        console.log('Modo de teste: carregando usuários mock');
-        const mockUsers: User[] = [
-          {
-            uid: 'teste-admin-uid',
-            email: 'teste@teste',
-            displayName: 'Usuário Teste',
-            role: 'admin'
-          },
-          {
-            uid: 'mock-user-1',
-            email: 'joao.silva@empresa.com',
-            displayName: 'João Silva',
-            role: 'user'
-          },
-          {
-            uid: 'mock-user-2',
-            email: 'maria.santos@empresa.com',
-            displayName: 'Maria Santos',
-            role: 'user'
-          },
-          {
-            uid: 'mock-admin-1',
-            email: 'admin@empresa.com',
-            displayName: 'Administrador',
-            role: 'admin'
-          }
-        ];
-        setUsers(mockUsers);
-        return;
+      setLoading(true);
+      console.log('Buscando usuários da API PostgreSQL...');
+      
+      const response = await fetch('/api/users');
+      
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
       }
       
-      const querySnapshot = await getDocs(collection(db, 'users'));
-      const usersData: User[] = [];
-      querySnapshot.forEach((doc) => {
-        usersData.push(doc.data() as User);
-      });
-      setUsers(usersData);
+      const data = await response.json();
+      console.log('Usuários carregados da API:', data.users);
+      
+      // Converter IDs do PostgreSQL para o formato esperado
+      const formattedUsers: User[] = data.users.map((user: { id: number; email: string; name: string; role: string }) => ({
+        uid: user.id.toString(),
+        email: user.email,
+        displayName: user.name,
+        role: user.role.toLowerCase() as 'admin' | 'user' // Converter para minúsculo
+      }));
+      
+      setUsers(formattedUsers);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
-      toast.error('Erro ao carregar usuários');
+      toast.error('Erro ao carregar usuários da API');
+      
+      // Fallback para dados mock em caso de erro
+      const mockUsers: User[] = [
+        {
+          uid: 'teste-admin-uid',
+          email: 'teste@teste',
+          displayName: 'Usuário Teste',
+          role: 'admin'
+        }
+      ];
+      setUsers(mockUsers);
     } finally {
       setLoading(false);
     }
@@ -87,36 +78,28 @@ export default function AdminUsersPage() {
     setCreating(true);
 
     try {
-      if (isTestMode) {
-        // Modo de teste - simular criação de usuário
-        toast.info('Modo de teste: simulando criação de usuário...');
-        
-        // Simular delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const newMockUser: User = {
-          uid: `mock-${Date.now()}`,
-          email: email,
-          displayName: displayName,
-          role: role
-        };
-        
-        // Adicionar à lista atual
-        setUsers(prev => [...prev, newMockUser]);
-        
-        toast.success('Usuário criado com sucesso! (Modo de teste)');
-        
-        // Limpar formulário
-        setEmail('');
-        setDisplayName('');
-        setPassword('');
-        setRole('user');
-        setDialogOpen(false);
-        return;
+      console.log('Criando usuário via API PostgreSQL...');
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          name: displayName,
+          role,
+          password
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
-      // Usar a função signUp do AuthContext
-      await signUp(email, password, displayName, role);
+      const result = await response.json();
+      console.log('Usuário criado:', result);
 
       toast.success('Usuário criado com sucesso!');
       
@@ -131,7 +114,8 @@ export default function AdminUsersPage() {
       fetchUsers();
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
-      toast.error('Erro ao criar usuário. Verifique os dados e tente novamente.');
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast.error(`Erro ao criar usuário: ${errorMessage}`);
     } finally {
       setCreating(false);
     }

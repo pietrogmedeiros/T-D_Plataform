@@ -1,10 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Training } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TrainingsContextType {
   trainings: Training[];
@@ -15,63 +12,89 @@ interface TrainingsContextType {
 
 const TrainingsContext = createContext<TrainingsContextType | undefined>(undefined);
 
-// Helper para criar timestamp mock
-const createMockTimestamp = (secondsOffset: number = 0) => ({
-  seconds: (Date.now() / 1000) + secondsOffset,
-  nanoseconds: 0,
-  toDate: () => new Date((Date.now() + secondsOffset * 1000)),
-  toMillis: () => Date.now() + secondsOffset * 1000
-});
-
-// Dados mock para modo de teste
-const mockTrainings: Training[] = [
-  {
-    id: 'mock-1',
-    title: 'Introdução à Segurança do Trabalho',
-    description: '<p>Este treinamento apresenta os conceitos básicos de <strong>segurança do trabalho</strong> e as principais normas regulamentadoras.</p><p>Você aprenderá sobre:</p><ul><li>EPIs obrigatórios</li><li>Procedimentos de emergência</li><li>Prevenção de acidentes</li></ul>',
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    uploaderId: 'teste-admin-uid',
-    createdAt: createMockTimestamp(0) as unknown as Training['createdAt']
-  },
-  {
-    id: 'mock-2',
-    title: 'Comunicação Eficaz no Ambiente Corporativo',
-    description: '<p>Desenvolva suas habilidades de <strong>comunicação</strong> para se destacar no ambiente profissional.</p><h3>Módulos do curso:</h3><ol><li>Fundamentos da comunicação</li><li>Comunicação assertiva</li><li>Apresentações eficazes</li></ol>',
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    uploaderId: 'teste-admin-uid',
-    createdAt: createMockTimestamp(-86400) as unknown as Training['createdAt']
-  },
-  {
-    id: 'mock-3',
-    title: 'Gestão de Tempo e Produtividade',
-    description: '<p>Aprenda técnicas comprovadas para <em>otimizar seu tempo</em> e aumentar sua produtividade no trabalho.</p><blockquote>A gestão eficaz do tempo é a chave para o sucesso profissional.</blockquote>',
-    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    uploaderId: 'teste-admin-uid',
-    createdAt: createMockTimestamp(-172800) as unknown as Training['createdAt']
+// Função para buscar treinamentos da API PostgreSQL
+async function fetchTrainingsFromAPI(): Promise<Training[]> {
+  try {
+    console.log('📡 Buscando treinamentos da API PostgreSQL...');
+    // Adicionar timestamp para evitar cache
+    const timestamp = Date.now();
+    const response = await fetch(`/api/trainings?_t=${timestamp}`, {
+      cache: 'no-store', // Forçar não usar cache
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Erro ao buscar treinamentos');
+    }
+    const data = await response.json();
+    
+    console.log('✅ Dados recebidos da API:', data.length, 'treinamentos');
+    
+    return data.map((training: {
+      id: string;
+      title: string;
+      description: string;
+      videoUrl?: string;
+      videoPath?: string;
+      uploaderId: string;
+      createdAt: string;
+    }) => ({
+      id: training.id,
+      title: training.title,
+      description: training.description,
+      videoUrl: training.videoUrl,
+      videoPath: training.videoPath,
+      uploaderId: training.uploaderId,
+      createdAt: {
+        seconds: Math.floor(new Date(training.createdAt).getTime() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(training.createdAt),
+        toMillis: () => new Date(training.createdAt).getTime(),
+        isEqual: () => false,
+        toJSON: () => ({ 
+          seconds: Math.floor(new Date(training.createdAt).getTime() / 1000),
+          nanoseconds: 0,
+          type: 'timestamp'
+        })
+      }
+    }));
+  } catch (error) {
+    console.error('❌ Erro ao buscar treinamentos da API:', error);
+    return [];
   }
-];
+}
 
 export function TrainingsProvider({ children }: { children: ReactNode }) {
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isTestMode } = useAuth();
 
   const addTraining = (trainingData: Omit<Training, 'id' | 'createdAt'>): string => {
-      const newTraining: Training = {
-        ...trainingData,
-        id: `training-${Date.now()}`,
-        createdAt: createMockTimestamp() as unknown as Training['createdAt']
-      };
-      
-      setTrainings(prev => [newTraining, ...prev]);
-      return newTraining.id;
-    };  const refreshTrainings = async () => {
+    console.log('📝 Adicionando novo treinamento:', trainingData.title);
+    
+    // Simular criação (a função real de upload já chama a API)
+    const id = `training-${Date.now()}`;
+    
+    // Atualizar lista após um tempo
+    setTimeout(() => {
+      refreshTrainings();
+    }, 1000);
+    
+    return id;
+  };
+
+  const refreshTrainings = async () => {
     setLoading(true);
-    if (isTestMode) {
-      setTrainings(mockTrainings);
-      setLoading(false);
-    } else {
-      // Implementar refresh do Firebase quando necessário
+    console.log('🔄 Atualizando lista de treinamentos...');
+    
+    try {
+      const apiTrainings = await fetchTrainingsFromAPI();
+      console.log('✅ Treinamentos atualizados:', apiTrainings.length);
+      setTrainings(apiTrainings);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar treinamentos:', error);
+      setTrainings([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -79,50 +102,36 @@ export function TrainingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchTrainings = async () => {
       try {
-        if (isTestMode) {
-          // Modo de teste - usar dados mock
-          console.log('Modo de teste: carregando treinamentos mock');
-          setTrainings(mockTrainings);
-          setLoading(false);
-          return;
-        }
+        setLoading(true);
+        console.log('🔄 Carregando treinamentos...');
 
-        if (!db) {
-          // Firebase não configurado
-          console.log('Firebase não configurado');
+        // Timeout de 5 segundos
+        const timeoutId = setTimeout(() => {
+          console.log('⏰ Timeout - Finalizando loading');
+          setLoading(false);
+        }, 5000);
+
+        const apiTrainings = await fetchTrainingsFromAPI();
+        
+        clearTimeout(timeoutId);
+        
+        if (apiTrainings.length > 0) {
+          console.log('✅ Treinamentos carregados:', apiTrainings.length);
+          setTrainings(apiTrainings);
+        } else {
+          console.log('ℹ️ Nenhum treinamento encontrado');
           setTrainings([]);
-          setLoading(false);
-          return;
         }
-
-        // Firebase configurado - buscar dados reais
-        console.log('Firebase configurado: buscando treinamentos do Firestore');
-        const q = query(
-          collection(db, 'trainings'),
-          orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        
-        const trainingsData: Training[] = [];
-        querySnapshot.forEach((doc) => {
-          trainingsData.push({
-            id: doc.id,
-            ...doc.data()
-          } as Training);
-        });
-        
-        setTrainings(trainingsData);
       } catch (error) {
-        console.error('Erro ao buscar treinamentos:', error);
-        // Fallback para dados mock em caso de erro
-        setTrainings(mockTrainings);
+        console.error('❌ Erro ao carregar treinamentos:', error);
+        setTrainings([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTrainings();
-  }, [isTestMode]); // Dependência do modo de teste
+  }, []);
 
   return (
     <TrainingsContext.Provider value={{

@@ -1,0 +1,23 @@
+runtime: nodejs20
+
+env_variables:
+  NODE_ENV: production
+  DATABASE_URL: "postgresql://postgres:TdPlatform2025!@34.60.135.7:5432/td_platform"
+  NEXTAUTH_URL: "https://ted-webcontinental.uc.r.appspot.com"
+  NEXTAUTH_SECRET: "ted-webcontinental-secret-2025-production-key"
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+resources:
+  cpu: 1
+  memory_gb: 2
+  disk_size_gb: 10
+
+handlers:
+  - url: /.*
+    script: auto
+    secure: always
+    redirect_http_response_code: 301

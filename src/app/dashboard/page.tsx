@@ -4,9 +4,102 @@ import { useTrainings } from '@/contexts/TrainingsContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
+
+interface UserProgress {
+  id: number;
+  userId: string;
+  trainingId: string;
+  progress: number;
+  completed: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProgressStatistics {
+  totalTrainings: number;
+  completedTrainings: number;
+  completionPercentage: number;
+}
 
 export default function DashboardPage() {
   const { trainings, loading } = useTrainings();
+  const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
+  const [statistics, setStatistics] = useState<ProgressStatistics>({
+    totalTrainings: 0,
+    completedTrainings: 0,
+    completionPercentage: 0
+  });
+  const [progressLoading, setProgressLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserProgress = async () => {
+      try {
+        // Pegar userId do localStorage (do AuthContext)
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+          console.log('❌ Dashboard: Usuário não encontrado no localStorage');
+          setProgressLoading(false);
+          return;
+        }
+        
+        const user = JSON.parse(userData);
+        // Usar uid ou id, dependendo de qual existe
+        const userId = user.id || user.uid;
+        if (!userId) {
+          console.log('❌ Dashboard: userId não encontrado');
+          setProgressLoading(false);
+          return;
+        }
+        
+        console.log('📊 Dashboard: Buscando progresso para usuário:', userId);
+        
+        const response = await fetch(`/api/progress?userId=${userId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Dashboard: Dados de progresso recebidos:', data);
+          setUserProgress(data.userProgress);
+          
+          // Usar as estatísticas da API se disponível, senão calcular com base nos treinamentos
+          if (data.statistics) {
+            setStatistics(data.statistics);
+          } else {
+            setStatistics({
+              totalTrainings: trainings.length,
+              completedTrainings: 0,
+              completionPercentage: 0
+            });
+          }
+        } else {
+          console.log('⚠️ Dashboard: API retornou erro, usando dados padrão');
+          // Se a API falhar, usar dados padrão
+          setStatistics({
+            totalTrainings: trainings.length,
+            completedTrainings: 0,
+            completionPercentage: 0
+          });
+        }
+      } catch (error) {
+        console.error('❌ Dashboard: Erro ao buscar progresso:', error);
+        // Em caso de erro, usar dados padrão
+        setStatistics({
+          totalTrainings: trainings.length,
+          completedTrainings: 0,
+          completionPercentage: 0
+        });
+      } finally {
+        setProgressLoading(false);
+      }
+    };
+
+    // Aguardar os treinamentos carregarem antes de buscar progresso
+    if (!loading && trainings.length >= 0) {
+      fetchUserProgress();
+    }
+  }, [loading, trainings]);
 
   const formatDate = (timestamp: unknown) => {
     try {
@@ -23,6 +116,16 @@ export default function DashboardPage() {
     return html.replace(/<[^>]*>/g, '');
   };
 
+  const getTrainingProgress = (trainingId: string) => {
+    const progress = userProgress.find(p => p.trainingId === trainingId);
+    return progress ? progress.progress : 0;
+  };
+
+  const isTrainingCompleted = (trainingId: string) => {
+    const progress = userProgress.find(p => p.trainingId === trainingId);
+    return progress ? progress.completed : false;
+  };
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
@@ -34,7 +137,7 @@ export default function DashboardPage() {
             <p className="text-gray-600 mt-2">Bem-vindo à plataforma de treinamento e desenvolvimento</p>
           </div>
 
-          {loading ? (
+          {loading || progressLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="animate-pulse">
@@ -57,7 +160,9 @@ export default function DashboardPage() {
                     <CardTitle className="text-sm font-medium">Total de Treinamentos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{trainings.length}</div>
+                    <div className="text-2xl font-bold">
+                      {progressLoading ? '...' : (statistics.totalTrainings || trainings.length)}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Disponíveis na plataforma
                     </p>
@@ -69,7 +174,9 @@ export default function DashboardPage() {
                     <CardTitle className="text-sm font-medium">Progresso Geral</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">65%</div>
+                    <div className="text-2xl font-bold">
+                      {progressLoading ? '...' : `${statistics.completionPercentage || 0}%`}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Média de conclusão
                     </p>
@@ -81,7 +188,9 @@ export default function DashboardPage() {
                     <CardTitle className="text-sm font-medium">Concluídos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">12</div>
+                    <div className="text-2xl font-bold">
+                      {progressLoading ? '...' : (statistics.completedTrainings || 0)}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Treinamentos finalizados
                     </p>
@@ -109,8 +218,8 @@ export default function DashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {trainings.map((training) => (
-                      <div key={training.id}>
-                        <Card className="h-full hover:shadow-lg transition-shadow duration-200">
+                      <Link key={training.id} href={`/trainings/${training.id}`}>
+                        <Card className="h-full hover:shadow-lg transition-shadow duration-200 cursor-pointer">
                           <CardHeader>
                             <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
                             <CardDescription className="text-sm text-gray-500">
@@ -125,24 +234,27 @@ export default function DashboardPage() {
                             <div className="space-y-3">
                               <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-500">Progresso:</span>
-                                <span className="font-medium">0%</span>
+                                <span className="font-medium">{getTrainingProgress(training.id)}%</span>
                               </div>
                               
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div 
                                   className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                                  style={{ width: '0%' }}
+                                  style={{ width: `${getTrainingProgress(training.id)}%` }}
                                 />
                               </div>
                               
                               <div className="flex items-center justify-between text-xs text-gray-500">
                                 <span>📹 Vídeo disponível</span>
-                                <span>⏱️ Não iniciado</span>
+                                <span>
+                                  {isTrainingCompleted(training.id) ? '✅ Concluído' : 
+                                   getTrainingProgress(training.id) > 0 ? '⏱️ Em andamento' : '⏱️ Não iniciado'}
+                                </span>
                               </div>
                             </div>
                           </CardContent>
                         </Card>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}

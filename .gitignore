@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# Uploads - arquivos grandes
+public/uploads/videos/*.mp4
+public/uploads/videos/*.avi
+public/uploads/videos/*.mov
+public/uploads/videos/*.wmv
+public/uploads/videos/*.flv
+public/uploads/videos/*.webm
+
+# Scripts temporários
+add-*.js
+test-*.js
+
+# Cache do sistema
+.cache/
+node_modules/.cache/

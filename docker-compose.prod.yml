@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:14
+    container_name: td_platform_db
+    environment:
+      POSTGRES_DB: td_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: TdPlatform2025!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database-setup.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - td_network
+    restart: unless-stopped
+
+  # Aplicação Next.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: td_platform_app
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:TdPlatform2025!@postgres:5432/td_platform
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: td-platform-secret-2025-production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - td_network
+    restart: unless-stopped
+    volumes:
+      - ./public/uploads:/app/public/uploads
+
+volumes:
+  postgres_data:
+
+networks:
+  td_network:
+    driver: bridge

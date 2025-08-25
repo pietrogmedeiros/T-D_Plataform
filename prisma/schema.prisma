@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String
+  role        Role     @default(USER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  trainings Training[]
+  
+  @@map("users")
+}
+
+// Training model
+model Training {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  videoUrl    String?
+  videoPath   String?  // Path para arquivo local
+  uploaderId  String
+  status      TrainingStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Learning objectives
+  learningObjective1 String?
+  learningObjective2 String?
+  learningObjective3 String?
+  learningObjective4 String?
+
+  // Relations
+  uploader    User     @relation(fields: [uploaderId], references: [id])
+  
+  @@map("trainings")
+}
+
+// User Progress model
+model UserProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  trainingId  String
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([userId, trainingId])
+  @@map("user_progress")
+}
+
+// Training Ratings model
+model TrainingRating {
+  id          String   @id @default(cuid())
+  userId      String
+  trainingId  String
+  rating      Int      // 1-5 stars
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([userId, trainingId])
+  @@map("training_ratings")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TrainingStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}

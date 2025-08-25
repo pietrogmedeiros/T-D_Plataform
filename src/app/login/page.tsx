@@ -31,7 +31,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      console.log('🔑 Iniciando processo de login...');
+      console.log('🔑 Iniciando processo de login...', { email, timestamp: new Date().toISOString() });
       await signIn(email, password);
       console.log('✅ Login realizado com sucesso');
       toast.success('Login realizado com sucesso!');
@@ -42,8 +42,9 @@ export default function LoginPage() {
         router.push('/dashboard');
       }, 500);
     } catch (error) {
-      console.error('❌ Erro no login:', error);
-      toast.error('Erro no login. Verifique suas credenciais.');
+      const errorMessage = error instanceof Error ? error.message : 'Erro no login. Verifique suas credenciais.';
+      console.error('❌ Erro no login:', errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

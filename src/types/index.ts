@@ -12,8 +12,13 @@ export interface Training {
   title: string;
   description: string;
   videoUrl: string;
+  videoPath?: string; // Caminho do arquivo de vídeo
   uploaderId: string;
   createdAt: Timestamp;
+  learningObjective1?: string;
+  learningObjective2?: string;
+  learningObjective3?: string;
+  learningObjective4?: string;
 }
 
 export interface Rating {

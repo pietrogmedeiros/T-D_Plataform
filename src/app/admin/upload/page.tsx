@@ -1,9 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { storage, db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTrainings } from '@/contexts/TrainingsContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -18,26 +15,30 @@ import { Upload } from 'lucide-react';
 
 export default function AdminUploadPage() {
   const { user } = useAuth();
-  const { addTraining } = useTrainings();
+  const { refreshTrainings } = useTrainings();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [video, setVideo] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // Learning objectives states
+  const [learningObjective1, setLearningObjective1] = useState('');
+  const [learningObjective2, setLearningObjective2] = useState('');
+  const [learningObjective3, setLearningObjective3] = useState('');
+  const [learningObjective4, setLearningObjective4] = useState('');
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Verificar se é um arquivo de vídeo
       if (!file.type.startsWith('video/')) {
         toast.error('Por favor, selecione um arquivo de vídeo válido.');
         return;
       }
       
-      // Verificar tamanho do arquivo (máximo 500MB)
-      const maxSize = 500 * 1024 * 1024; // 500MB
+      const maxSize = 1024 * 1024 * 1024; // 1GB
       if (file.size > maxSize) {
-        toast.error('O arquivo deve ter no máximo 500MB.');
+        toast.error('O arquivo deve ter no máximo 1GB.');
         return;
       }
       
@@ -45,11 +46,79 @@ export default function AdminUploadPage() {
     }
   };
 
+  const uploadVideoInChunks = async (file: File): Promise<{
+    success: boolean;
+    videoUrl: string;
+    videoPath: string;
+    fileName: string;
+  }> => {
+    try {
+      console.log('� Iniciando upload por chunks...');
+      
+      const chunkSize = 5 * 1024 * 1024; // 5MB por chunk
+      const totalChunks = Math.ceil(file.size / chunkSize);
+      
+      console.log(`📊 Arquivo será dividido em ${totalChunks} chunks de ~5MB`);
+
+      let uploadedChunks = 0;
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(start + chunkSize, file.size);
+        const chunk = file.slice(start, end);
+
+        console.log(`📤 Enviando chunk ${chunkIndex + 1}/${totalChunks}...`);
+
+        const formData = new FormData();
+        formData.append('video', chunk);
+        formData.append('chunkIndex', chunkIndex.toString());
+        formData.append('totalChunks', totalChunks.toString());
+        formData.append('fileName', file.name);
+
+        const response = await fetch('/api/upload/chunks', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || `Erro no chunk ${chunkIndex + 1}`);
+        }
+
+        const result = await response.json();
+        uploadedChunks++;
+
+        // Atualizar progresso
+        const progress = Math.round((uploadedChunks / totalChunks) * 85);
+        setUploadProgress(progress);
+
+        console.log(`✅ Chunk ${chunkIndex + 1}/${totalChunks} enviado`);
+
+        // Se é o último chunk e está completo
+        if (result.completed) {
+          console.log('🎉 Upload completo!');
+          return {
+            success: true,
+            videoUrl: result.videoUrl,
+            videoPath: result.videoPath,
+            fileName: result.fileName,
+          };
+        }
+      }
+
+      throw new Error('Upload não foi completado corretamente');
+
+    } catch (error) {
+      console.error('❌ Erro no upload por chunks:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title || !description || !video) {
-      toast.error('Preencha todos os campos');
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -58,137 +127,74 @@ export default function AdminUploadPage() {
       return;
     }
 
-    if (!storage || !db) {
-      // Modo de teste - simular upload
-      toast.info('Modo de teste: simulando upload...');
-      setUploading(true);
-      setUploadProgress(0);
-
-      // Simular progresso de upload
-      const simulateProgress = () => {
-        return new Promise<void>((resolve) => {
-          let progress = 0;
-          const interval = setInterval(() => {
-            progress += Math.random() * 15;
-            if (progress >= 100) {
-              progress = 100;
-              setUploadProgress(100);
-              clearInterval(interval);
-              resolve();
-            } else {
-              setUploadProgress(progress);
-            }
-          }, 200);
-        });
-      };
-
-      try {
-        await simulateProgress();
-        
-        // Simular delay de processamento
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Adicionar treinamento ao contexto global
-        const trainingId = addTraining({
-          title,
-          description,
-          videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', // URL de vídeo mock
-          uploaderId: user.uid
-        });
-        
-        toast.success('Treinamento criado com sucesso! (Modo de teste)');
-        console.log('Treinamento adicionado:', trainingId);
-        
-        // Limpar formulário
-        setTitle('');
-        setDescription('');
-        setVideo(null);
-        setUploadProgress(0);
-        
-        // Reset do input de arquivo
-        const fileInput = document.getElementById('video') as HTMLInputElement;
-        if (fileInput) {
-          fileInput.value = '';
-        }
-      } catch (error) {
-        console.error('Erro na simulação:', error);
-        toast.error('Erro na simulação de upload');
-      } finally {
-        setUploading(false);
-      }
-      return;
-    }
-
+    console.log('🚀 Iniciando upload:', { title, description, videoName: video.name });
+    
     setUploading(true);
     setUploadProgress(0);
 
     try {
-      // Upload do vídeo para o Firebase Storage
-      const videoRef = ref(storage, `trainings/${Date.now()}_${video.name}`);
-      const uploadTask = uploadBytesResumable(videoRef, video);
+      // 1. Fazer upload do vídeo por chunks
+      console.log('📤 Iniciando upload por chunks...');
+      
+      const uploadData = await uploadVideoInChunks(video);
+      console.log('✅ Upload do vídeo concluído:', uploadData);
+      
+      setUploadProgress(95);
 
-      // Monitorar progresso do upload
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
+      // 2. Criar o treinamento no banco
+      console.log('💾 Salvando treinamento no banco...');
+      
+      const trainingResponse = await fetch('/api/trainings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        (error) => {
-          console.error('Erro no upload:', error);
-          toast.error('Erro ao fazer upload do vídeo');
-          setUploading(false);
-        },
-        async () => {
-          try {
-            // Upload concluído, obter URL do vídeo
-            const videoUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            
-            // Verificar se o db está disponível
-            if (!db) {
-              throw new Error('Firestore não configurado');
-            }
-            
-            // Salvar dados do treinamento no Firestore
-            await addDoc(collection(db, 'trainings'), {
-              title,
-              description,
-              videoUrl,
-              uploaderId: user.uid,
-              createdAt: serverTimestamp()
-            });
+        body: JSON.stringify({
+          title,
+          description,
+          videoUrl: uploadData.videoUrl,
+          videoPath: uploadData.videoPath,
+          uploaderId: user.uid,
+          status: 'PUBLISHED',
+          learningObjective1: learningObjective1 || null,
+          learningObjective2: learningObjective2 || null,
+          learningObjective3: learningObjective3 || null,
+          learningObjective4: learningObjective4 || null,
+        }),
+      });
 
-            // Adicionar treinamento ao contexto global também
-            addTraining({
-              title,
-              description,
-              videoUrl,
-              uploaderId: user.uid
-            });
+      if (!trainingResponse.ok) {
+        throw new Error('Erro ao salvar treinamento');
+      }
 
-            toast.success('Treinamento criado com sucesso!');
-            
-            // Limpar formulário
-            setTitle('');
-            setDescription('');
-            setVideo(null);
-            setUploadProgress(0);
-            
-            // Reset do input de arquivo
-            const fileInput = document.getElementById('video') as HTMLInputElement;
-            if (fileInput) {
-              fileInput.value = '';
-            }
-          } catch (error) {
-            console.error('Erro ao salvar treinamento:', error);
-            toast.error('Erro ao salvar treinamento no banco de dados');
-          } finally {
-            setUploading(false);
-          }
-        }
-      );
+      const newTraining = await trainingResponse.json();
+      console.log('✅ Treinamento criado:', newTraining);
+      
+      setUploadProgress(100);
+      toast.success(`🎉 Treinamento "${title}" criado com sucesso!`);
+      
+      // Atualizar lista de treinamentos
+      console.log('🔄 Atualizando lista de treinamentos...');
+      await refreshTrainings();
+      
+      // Limpar formulário
+      setTitle('');
+      setDescription('');
+      setVideo(null);
+      setLearningObjective1('');
+      setLearningObjective2('');
+      setLearningObjective3('');
+      setLearningObjective4('');
+      setUploadProgress(0);
+      
+      const fileInput = document.getElementById('video') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
     } catch (error) {
-      console.error('Erro ao iniciar upload:', error);
-      toast.error('Erro ao iniciar upload');
+      console.error('❌ Erro no processo:', error);
+      setUploadProgress(0);
+      toast.error(error instanceof Error ? error.message : 'Erro ao criar treinamento');
+    } finally {
       setUploading(false);
     }
   };
@@ -248,6 +254,62 @@ export default function AdminUploadPage() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Você pode usar HTML básico como &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;li&gt;, etc.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">O que o usuário irá aprender nesse treinamento?</Label>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="objective1">Objetivo de Aprendizado 1</Label>
+                        <Input
+                          id="objective1"
+                          type="text"
+                          value={learningObjective1}
+                          onChange={(e) => setLearningObjective1(e.target.value)}
+                          placeholder="Ex: Conceitos fundamentais"
+                          disabled={uploading}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="objective2">Objetivo de Aprendizado 2</Label>
+                        <Input
+                          id="objective2"
+                          type="text"
+                          value={learningObjective2}
+                          onChange={(e) => setLearningObjective2(e.target.value)}
+                          placeholder="Ex: Aplicação prática"
+                          disabled={uploading}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="objective3">Objetivo de Aprendizado 3</Label>
+                        <Input
+                          id="objective3"
+                          type="text"
+                          value={learningObjective3}
+                          onChange={(e) => setLearningObjective3(e.target.value)}
+                          placeholder="Ex: Melhores práticas"
+                          disabled={uploading}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="objective4">Objetivo de Aprendizado 4</Label>
+                        <Input
+                          id="objective4"
+                          type="text"
+                          value={learningObjective4}
+                          onChange={(e) => setLearningObjective4(e.target.value)}
+                          placeholder="Ex: Exercícios práticos"
+                          disabled={uploading}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Estes campos são opcionais, mas ajudam os usuários a entender o que vão aprender.
                     </p>
                   </div>
 

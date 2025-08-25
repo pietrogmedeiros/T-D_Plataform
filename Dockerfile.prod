@@ -1,0 +1,68 @@
+# Dockerfile otimizado para produção
+FROM node:20-alpine AS dependencies
+
+# Instalar dependências do sistema
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Instalar dependências
+RUN npm ci --only=production && npm cache clean --force
+
+# Gerar cliente Prisma
+RUN npx prisma generate
+
+# Etapa de build
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+# Copiar dependências da etapa anterior
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/prisma ./prisma
+
+# Copiar código fonte
+COPY . .
+
+# Build da aplicação
+RUN npm run build
+
+# Etapa de produção
+FROM node:20-alpine AS production
+
+# Instalar dependências do sistema
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Criar usuário não-root
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copiar arquivos necessários
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+
+# Criar diretório para uploads
+RUN mkdir -p /app/public/uploads/videos
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Script de inicialização
+COPY --chown=nextjs:nodejs docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
+
+CMD ["/app/docker-entrypoint.sh"]
