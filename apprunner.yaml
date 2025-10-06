@@ -1,0 +1,25 @@
+version: 1.0
+runtime: nodejs18
+build:
+  commands:
+    build:
+      - echo "🔨 Installing dependencies..."
+      - npm ci
+      - echo "🏗️ Building application..."
+      - npm run build
+run:
+  runtime-version: 18
+  command: npm start
+  network:
+    port: 3000
+    env:
+      - PORT=3000
+      - NODE_ENV=production
+      - AWS_REGION=us-east-2
+      - S3_BUCKET_NAME=plataforma-ted-webcontinental-uploads
+      - DYNAMODB_USERS_TABLE=plataforma-ted-webcontinental-users
+      - DYNAMODB_TRAININGS_TABLE=plataforma-ted-webcontinental-trainings
+      - DYNAMODB_USER_PROGRESS_TABLE=plataforma-ted-webcontinental-user-progress
+      - DYNAMODB_TRAINING_RATINGS_TABLE=plataforma-ted-webcontinental-training-ratings
+      - JWT_SECRET=td-platform-super-secret-jwt-key-2025
+      - ADMIN_EMAIL=pietro.medeiros@webcontinental.com.br

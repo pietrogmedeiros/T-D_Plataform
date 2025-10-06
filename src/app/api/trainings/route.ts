@@ -1,26 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { DynamoDBService } from '@/lib/dynamodb';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+interface Training {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  videoPath?: string;
+  uploaderId: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  learningObjective1?: string;
+  learningObjective2?: string;
+  learningObjective3?: string;
+  learningObjective4?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // GET - Listar todos os treinamentos
 export async function GET() {
   try {
-    const trainings = await prisma.training.findMany({
-      include: {
-        uploader: {
-          select: {
-            displayName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const trainings = await DynamoDBService.getAllTrainings();
 
-    const response = NextResponse.json(trainings);
+    // Para cada treinamento, buscar dados do uploader
+    const trainingsWithUploader = await Promise.all(
+      (trainings as Training[]).map(async (training: Training) => {
+        const uploader = await DynamoDBService.getUserById(training.uploaderId);
+        return {
+          ...training,
+          uploader: uploader ? {
+            displayName: uploader.displayName,
+            email: uploader.email,
+          } : null,
+        };
+      })
+    );
+
+    const response = NextResponse.json(trainingsWithUploader);
     
     // Headers para evitar cache
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -64,9 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se o usuário existe
-    const user = await prisma.user.findUnique({
-      where: { id: uploaderId },
-    });
+    const user = await DynamoDBService.getUserById(uploaderId);
 
     if (!user) {
       return NextResponse.json(
@@ -75,30 +92,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const training = await prisma.training.create({
-      data: {
-        title,
-        description,
-        videoUrl,
-        videoPath,
-        uploaderId,
-        status: status || 'DRAFT',
-        learningObjective1,
-        learningObjective2,
-        learningObjective3,
-        learningObjective4,
-      },
-      include: {
-        uploader: {
-          select: {
-            displayName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const newTraining: Training = {
+      id: randomUUID(),
+      title,
+      description,
+      videoUrl,
+      videoPath,
+      uploaderId,
+      status: (status as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') || 'DRAFT',
+      learningObjective1,
+      learningObjective2,
+      learningObjective3,
+      learningObjective4,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    return NextResponse.json(training, { status: 201 });
+    await DynamoDBService.createTraining(newTraining);
+
+    const trainingWithUploader = {
+      ...newTraining,
+      uploader: {
+        displayName: user.displayName,
+        email: user.email,
+      },
+    };
+
+    return NextResponse.json(trainingWithUploader, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar treinamento:', error);
     return NextResponse.json(

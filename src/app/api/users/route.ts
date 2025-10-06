@@ -1,41 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { DynamoDBService } from '@/lib/dynamodb';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  role: 'USER' | 'ADMIN';
+  createdAt: string;
+  updatedAt: string;
+}
 
 // GET - Listar todos os usuários
 export async function GET() {
   try {
     console.log('📡 API Users GET: Buscando usuários...');
     
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        role: true,
-        createdAt: true,
-        _count: {
-          select: {
-            trainings: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const users = await DynamoDBService.getAllUsers();
 
     console.log('✅ Usuários encontrados:', users.length);
     
     // Mapear para o formato esperado pela página (name instead of displayName)
-    const formattedUsers = users.map((user: typeof users[0]) => ({
+    const formattedUsers = (users as User[]).map((user: User) => ({
       id: user.id,
       email: user.email,
       name: user.displayName, // Mapear displayName para name
       role: user.role,
       createdAt: user.createdAt,
-      trainingsCount: user._count.trainings,
+      trainingsCount: 0, // TODO: Implementar contagem real de treinamentos
     }));
 
     return NextResponse.json({ users: formattedUsers });
@@ -71,9 +65,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Verificando se usuário já existe:', email);
     
     // Verificar se o usuário já existe
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await DynamoDBService.getUserByEmail(email);
 
     if (existingUser) {
       console.error('❌ Usuário já existe:', email);
@@ -83,37 +75,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Criando usuário no PostgreSQL...');
+    console.log('✅ Criando usuário no DynamoDB...');
     
-    // Converter role para o formato do enum Prisma
-    let prismaRole: 'USER' | 'ADMIN' = 'USER';
+    // Converter role para o formato correto
+    let userRole: 'USER' | 'ADMIN' = 'USER';
     if (role) {
       if (role.toLowerCase() === 'admin' || role === 'ADMIN') {
-        prismaRole = 'ADMIN';
+        userRole = 'ADMIN';
       } else {
-        prismaRole = 'USER';
+        userRole = 'USER';
       }
     }
     
-    console.log('🔄 Role convertido:', { original: role, converted: prismaRole });
+    console.log('🔄 Role convertido:', { original: role, converted: userRole });
     
-    const user = await prisma.user.create({
-      data: {
-        email,
-        displayName: userDisplayName,
-        role: prismaRole,
-      },
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    const newUser: User = {
+      id: randomUUID(),
+      email,
+      displayName: userDisplayName,
+      role: userRole,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    console.log('✅ Usuário criado com sucesso:', user);
-    return NextResponse.json({ user, message: 'Usuário criado com sucesso!' }, { status: 201 });
+    await DynamoDBService.createUser(newUser);
+
+    console.log('✅ Usuário criado com sucesso:', newUser);
+    return NextResponse.json({ 
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        displayName: newUser.displayName,
+        role: newUser.role,
+        createdAt: newUser.createdAt,
+      }, 
+      message: 'Usuário criado com sucesso!' 
+    }, { status: 201 });
   } catch (error) {
     console.error('❌ Erro ao criar usuário:', error);
     return NextResponse.json(

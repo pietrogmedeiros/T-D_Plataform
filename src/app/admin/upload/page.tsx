@@ -46,70 +46,47 @@ export default function AdminUploadPage() {
     }
   };
 
-  const uploadVideoInChunks = async (file: File): Promise<{
+  const uploadVideoSimple = async (file: File): Promise<{
     success: boolean;
     videoUrl: string;
     videoPath: string;
     fileName: string;
   }> => {
     try {
-      console.log('� Iniciando upload por chunks...');
+      console.log('📤 Iniciando upload simples...');
       
-      const chunkSize = 5 * 1024 * 1024; // 5MB por chunk
-      const totalChunks = Math.ceil(file.size / chunkSize);
-      
-      console.log(`📊 Arquivo será dividido em ${totalChunks} chunks de ~5MB`);
+      setUploadProgress(10);
 
-      let uploadedChunks = 0;
+      const formData = new FormData();
+      formData.append('video', file);
 
-      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-        const start = chunkIndex * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const chunk = file.slice(start, end);
+      console.log('📤 Enviando arquivo...');
 
-        console.log(`📤 Enviando chunk ${chunkIndex + 1}/${totalChunks}...`);
+      const response = await fetch('/api/upload/video', {
+        method: 'POST',
+        body: formData,
+      });
 
-        const formData = new FormData();
-        formData.append('video', chunk);
-        formData.append('chunkIndex', chunkIndex.toString());
-        formData.append('totalChunks', totalChunks.toString());
-        formData.append('fileName', file.name);
-
-        const response = await fetch('/api/upload/chunks', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || `Erro no chunk ${chunkIndex + 1}`);
-        }
-
-        const result = await response.json();
-        uploadedChunks++;
-
-        // Atualizar progresso
-        const progress = Math.round((uploadedChunks / totalChunks) * 85);
-        setUploadProgress(progress);
-
-        console.log(`✅ Chunk ${chunkIndex + 1}/${totalChunks} enviado`);
-
-        // Se é o último chunk e está completo
-        if (result.completed) {
-          console.log('🎉 Upload completo!');
-          return {
-            success: true,
-            videoUrl: result.videoUrl,
-            videoPath: result.videoPath,
-            fileName: result.fileName,
-          };
-        }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro na resposta:', errorText);
+        throw new Error(`Erro no upload: ${response.status}`);
       }
 
-      throw new Error('Upload não foi completado corretamente');
+      const result = await response.json();
+      setUploadProgress(85);
+
+      console.log('✅ Upload completo:', result);
+      
+      return {
+        success: result.success,
+        videoUrl: result.videoUrl,
+        videoPath: result.videoPath,
+        fileName: result.fileName,
+      };
 
     } catch (error) {
-      console.error('❌ Erro no upload por chunks:', error);
+      console.error('❌ Erro no upload:', error);
       throw error;
     }
   };
@@ -133,10 +110,10 @@ export default function AdminUploadPage() {
     setUploadProgress(0);
 
     try {
-      // 1. Fazer upload do vídeo por chunks
-      console.log('📤 Iniciando upload por chunks...');
+      // 1. Fazer upload do vídeo
+      console.log('📤 Iniciando upload do vídeo...');
       
-      const uploadData = await uploadVideoInChunks(video);
+      const uploadData = await uploadVideoSimple(video);
       console.log('✅ Upload do vídeo concluído:', uploadData);
       
       setUploadProgress(95);

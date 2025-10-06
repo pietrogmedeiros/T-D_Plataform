@@ -3,8 +3,8 @@ services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: td_user
-      POSTGRES_PASSWORD: td_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: td_platform
     ports:
       - "5432:5432"

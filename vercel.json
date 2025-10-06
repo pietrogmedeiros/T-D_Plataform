@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "build": {
+    "env": {
+      "AWS_REGION": "us-east-2",
+      "DYNAMODB_USERS_TABLE": "plataforma-ted-webcontinental-users",
+      "DYNAMODB_TRAININGS_TABLE": "plataforma-ted-webcontinental-trainings",
+      "DYNAMODB_USER_PROGRESS_TABLE": "plataforma-ted-webcontinental-user-progress",
+      "DYNAMODB_TRAINING_RATINGS_TABLE": "plataforma-ted-webcontinental-training-ratings",
+      "S3_BUCKET_NAME": "plataforma-ted-webcontinental-uploads",
+      "AWS_APPLICATION_TAG": "arn:aws:resource-groups:us-east-2:075343201843:group/plataforma-ted-webcontinental/07pf4bafvqzmstnowmbe70haal",
+      "NODE_ENV": "production"
+    }
+  },
+  "env": {
+    "AWS_REGION": "us-east-2",
+    "DYNAMODB_USERS_TABLE": "plataforma-ted-webcontinental-users",
+    "DYNAMODB_TRAININGS_TABLE": "plataforma-ted-webcontinental-trainings",
+    "DYNAMODB_USER_PROGRESS_TABLE": "plataforma-ted-webcontinental-user-progress",
+    "DYNAMODB_TRAINING_RATINGS_TABLE": "plataforma-ted-webcontinental-training-ratings",
+    "S3_BUCKET_NAME": "plataforma-ted-webcontinental-uploads",
+    "AWS_APPLICATION_TAG": "arn:aws:resource-groups:us-east-2:075343201843:group/plataforma-ted-webcontinental/07pf4bafvqzmstnowmbe70haal",
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
