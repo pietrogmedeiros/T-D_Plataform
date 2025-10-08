@@ -1,0 +1,47 @@
+{
+  "ServiceName": "plataforma-ted-webcontinental",
+  "SourceConfiguration": {
+    "CodeRepository": {
+      "RepositoryUrl": "https://github.com/pietrogmedeiros/T-D_Plataform",
+      "SourceCodeVersion": {
+        "Type": "BRANCH",
+        "Value": "main"
+      },
+      "ConnectionArn": "arn:aws:apprunner:us-east-2:075343201843:connection/td-platform-connection/d790e168225848f995729efafd777239",
+      "CodeConfiguration": {
+        "ConfigurationSource": "API",
+        "CodeConfigurationValues": {
+          "Runtime": "NODEJS_18",
+          "BuildCommand": "npm ci && npm run build",
+          "StartCommand": "npm start",
+          "Port": "3000",
+          "RuntimeEnvironmentVariables": {
+            "NODE_ENV": "production",
+            "AWS_REGION": "us-east-2",
+            "S3_BUCKET_NAME": "plataforma-ted-webcontinental-uploads",
+            "DYNAMODB_USERS_TABLE": "plataforma-ted-webcontinental-users",
+            "DYNAMODB_TRAININGS_TABLE": "plataforma-ted-webcontinental-trainings",
+            "DYNAMODB_USER_PROGRESS_TABLE": "plataforma-ted-webcontinental-user-progress",
+            "DYNAMODB_TRAINING_RATINGS_TABLE": "plataforma-ted-webcontinental-training-ratings",
+            "JWT_SECRET": "td-platform-super-secret-jwt-key-2025",
+            "ADMIN_EMAIL": "pietro.medeiros@webcontinental.com.br"
+          }
+        }
+      }
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1 vCPU",
+    "Memory": "2 GB"
+  },
+  "HealthCheckConfiguration": {
+    "Protocol": "HTTP",
+    "Path": "/",
+    "Interval": 10,
+    "Timeout": 5,
+    "HealthyThreshold": 3,
+    "UnhealthyThreshold": 3
+  },
+  "ServiceAccessRoleArn": "arn:aws:iam::075343201843:role/plataforma-ted-webcontinental-app-role",
+  "AutoScalingConfigurationArn": "arn:aws:apprunner:us-east-2:075343201843:autoscalingconfiguration/DefaultConfiguration/1/00000000000000000000000000000001"
+}

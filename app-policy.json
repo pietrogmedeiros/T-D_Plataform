@@ -1,0 +1,37 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:BatchGetItem",
+                "dynamodb:BatchWriteItem"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:us-east-2:075343201843:table/plataforma-ted-webcontinental-users",
+                "arn:aws:dynamodb:us-east-2:075343201843:table/plataforma-ted-webcontinental-trainings",
+                "arn:aws:dynamodb:us-east-2:075343201843:table/plataforma-ted-webcontinental-user-progress",
+                "arn:aws:dynamodb:us-east-2:075343201843:table/plataforma-ted-webcontinental-training-ratings"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::plataforma-ted-webcontinental-uploads",
+                "arn:aws:s3:::plataforma-ted-webcontinental-uploads/*"
+            ]
+        }
+    ]
+}
