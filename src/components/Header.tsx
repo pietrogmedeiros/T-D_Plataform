@@ -51,7 +51,7 @@ export function Header() {
                 Dashboard
               </Link>
               
-              {user.role === 'admin' && (
+              {user.role === 'ADMIN' && (
                 <>
                   <Link 
                     href="/admin/dashboard" 
@@ -81,7 +81,7 @@ export function Header() {
               Olá, {user.displayName || user.email}
             </span>
             <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
-              {user.role === 'admin' ? 'Admin' : 'Usuário'}
+              {user.role === 'ADMIN' ? 'Admin' : 'Usuário'}
             </span>
             <Button 
               variant="outline" 

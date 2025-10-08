@@ -1,10 +1,11 @@
 import { Timestamp } from 'firebase/firestore';
 
 export interface User {
-  uid: string;
+  uid?: string; // Compatibilidade Firebase
+  id?: string; // DynamoDB
   email: string;
   displayName: string;
-  role: 'admin' | 'user';
+  role: 'ADMIN' | 'USER';
 }
 
 export interface Training {
@@ -35,6 +36,6 @@ export interface CreateTrainingData {
 
 export interface CreateUserData {
   email: string;
-  role: 'admin' | 'user';
+  role: 'ADMIN' | 'USER';
   displayName: string;
 }

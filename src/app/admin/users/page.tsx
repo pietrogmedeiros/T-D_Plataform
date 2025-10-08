@@ -24,7 +24,7 @@ export default function AdminUsersPage() {
   // Form states
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<'ADMIN' | 'USER'>('USER');
   const [password, setPassword] = useState('');
 
   useEffect(() => {
@@ -45,12 +45,20 @@ export default function AdminUsersPage() {
       const data = await response.json();
       console.log('Usuários carregados da API:', data.users);
       
-      // Converter IDs do PostgreSQL para o formato esperado
-      const formattedUsers: User[] = data.users.map((user: { id: number; email: string; name: string; role: string }) => ({
-        uid: user.id.toString(),
+      // Converter e normalizar os dados dos usuários
+      const formattedUsers: User[] = data.users.map((user: {
+        id?: string | number;
+        uid?: string;
+        email: string;
+        name?: string;
+        displayName?: string;
+        role?: string;
+      }) => ({
+        uid: user.id?.toString() || user.uid,
+        id: user.id?.toString() || user.uid,
         email: user.email,
-        displayName: user.name,
-        role: user.role.toLowerCase() as 'admin' | 'user' // Converter para minúsculo
+        displayName: user.name || user.displayName,
+        role: (user.role || 'USER').toUpperCase() as 'ADMIN' | 'USER'
       }));
       
       setUsers(formattedUsers);
@@ -64,7 +72,7 @@ export default function AdminUsersPage() {
           uid: 'teste-admin-uid',
           email: 'teste@teste',
           displayName: 'Usuário Teste',
-          role: 'admin'
+          role: 'ADMIN'
         }
       ];
       setUsers(mockUsers);
@@ -87,7 +95,8 @@ export default function AdminUsersPage() {
         },
         body: JSON.stringify({
           email,
-          name: displayName,
+          displayName, // Nome correto para DynamoDB
+          name: displayName, // Mantém compatibilidade com PostgreSQL
           role,
           password
         }),
@@ -107,7 +116,7 @@ export default function AdminUsersPage() {
       setEmail('');
       setDisplayName('');
       setPassword('');
-      setRole('user');
+      setRole('USER');
       setDialogOpen(false);
       
       // Recarregar lista de usuários
@@ -194,11 +203,11 @@ export default function AdminUsersPage() {
                         <select
                           id="role"
                           value={role}
-                          onChange={(e) => setRole(e.target.value as 'admin' | 'user')}
+                          onChange={(e) => setRole(e.target.value as 'ADMIN' | 'USER')}
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          <option value="user">Usuário</option>
-                          <option value="admin">Administrador</option>
+                          <option value="USER">Usuário</option>
+                          <option value="ADMIN">Administrador</option>
                         </select>
                       </div>
                     </div>
@@ -248,11 +257,11 @@ export default function AdminUsersPage() {
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
                             <span className={`px-2 py-1 rounded-full text-xs ${
-                              user.role === 'admin' 
+                              user.role === 'ADMIN' 
                                 ? 'bg-red-100 text-red-800' 
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                              {user.role === 'ADMIN' ? 'Administrador' : 'Usuário'}
                             </span>
                           </TableCell>
                           <TableCell className="font-mono text-xs">

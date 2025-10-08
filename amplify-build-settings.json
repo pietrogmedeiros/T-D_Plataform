@@ -1,0 +1,5 @@
+{
+  "appRoot": ".",
+  "distDir": ".next",
+  "buildCommand": "npm run build"
+}

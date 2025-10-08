@@ -21,7 +21,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
         return;
       }
 
-      if (requireAdmin && user.role !== 'admin') {
+      if (requireAdmin && user.role !== 'ADMIN') {
         // Usuário não é admin, redirecionar para dashboard
         router.push('/dashboard');
         return;
@@ -44,7 +44,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }
 
   // Se requer admin e não é admin, não renderizar nada (será redirecionado)
-  if (requireAdmin && user.role !== 'admin') {
+  if (requireAdmin && user.role !== 'ADMIN') {
     return null;
   }
 

@@ -8,7 +8,7 @@ interface AuthContextType {
   firebaseUser: null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string, role?: 'admin' | 'user') => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, role?: 'ADMIN' | 'USER') => Promise<void>;
   logout: () => Promise<void>;
   isTestMode: boolean;
 }
@@ -21,19 +21,19 @@ const testUsers: User[] = [
     uid: 'test-1',
     email: 'teste@teste',
     displayName: 'Usuário Teste',
-    role: 'user'
+    role: 'USER'
   },
   {
     uid: 'admin-1',
     email: 'admin@teste',
     displayName: 'Admin Teste',
-    role: 'admin'
+    role: 'ADMIN'
   },
   {
     uid: 'pietro-1',
     email: 'pietro.medeiros@webcontinental.com.br',
     displayName: 'Pietro Medeiros',
-    role: 'admin'
+    role: 'ADMIN'
   }
 ];
 
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, displayName: string, role: 'admin' | 'user' = 'user') => {
+  const signUp = async (email: string, password: string, displayName: string, role: 'ADMIN' | 'USER' = 'USER') => {
     setLoading(true);
     try {
       // Simular cadastro sem Firebase

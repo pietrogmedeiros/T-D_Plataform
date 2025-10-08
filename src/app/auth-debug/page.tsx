@@ -57,8 +57,8 @@ export default function AuthDebugPage() {
                   <ul className="space-y-1 text-sm">
                     <li>Email: {user.email}</li>
                     <li>Nome: {user.displayName}</li>
-                    <li>Role: <span className={user.role === 'admin' ? 'text-purple-600' : 'text-blue-600'}>{user.role}</span></li>
-                    <li>UID: {user.uid.substring(0, 8)}...</li>
+                    <li>Role: <span className={user.role === 'ADMIN' ? 'text-purple-600' : 'text-blue-600'}>{user.role}</span></li>
+                    <li>UID: {user.uid?.substring(0, 8) || (user.id?.substring(0, 8) || 'N/A')}...</li>
                   </ul>
                 ) : (
                   <p className="text-gray-500 text-sm">Nenhum usuário logado</p>

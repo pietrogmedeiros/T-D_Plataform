@@ -46,10 +46,10 @@ interface Training {
 }
 
 export const TABLES = {
-  USERS: process.env.DYNAMODB_USERS_TABLE || 'plataforma-ted-users',
-  TRAININGS: process.env.DYNAMODB_TRAININGS_TABLE || 'plataforma-ted-trainings',
-  USER_PROGRESS: process.env.DYNAMODB_USER_PROGRESS_TABLE || 'plataforma-ted-user-progress',
-  TRAINING_RATINGS: process.env.DYNAMODB_TRAINING_RATINGS_TABLE || 'plataforma-ted-training-ratings',
+  USERS: process.env.DYNAMODB_USERS_TABLE || 'plataforma-ted-webcontinental-users',
+  TRAININGS: process.env.DYNAMODB_TRAININGS_TABLE || 'plataforma-ted-webcontinental-trainings',
+  USER_PROGRESS: process.env.DYNAMODB_USER_PROGRESS_TABLE || 'plataforma-ted-webcontinental-user-progress',
+  TRAINING_RATINGS: process.env.DYNAMODB_TRAINING_RATINGS_TABLE || 'plataforma-ted-webcontinental-training-ratings',
 };
 
 // Utilitários para operações DynamoDB

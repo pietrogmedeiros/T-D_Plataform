@@ -1,0 +1,15 @@
+{
+    "region": "us-east-2",
+    "appName": "plataforma-ted-webcontinental",
+    "s3Bucket": "plataforma-ted-webcontinental-uploads",
+    "dynamodbTables": {
+        "users": "plataforma-ted-webcontinental-users",
+        "trainings": "plataforma-ted-webcontinental-trainings",
+        "userProgress": "plataforma-ted-webcontinental-user-progress",
+        "trainingRatings": "plataforma-ted-webcontinental-training-ratings"
+    },
+    "iamRole": "plataforma-ted-webcontinental-app-role",
+    "tags": {
+        "awsApplication": "arn:aws:resource-groups:us-east-2:075343201843:group/plataforma-ted-webcontinental/07pf4bafvqzmstnowmbe70haal"
+    }
+}
